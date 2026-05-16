@@ -1,4 +1,4 @@
-package com.example.geoorkael
+package com.example.geoorakel
 
 import org.junit.Test
 

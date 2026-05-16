@@ -1,4 +1,4 @@
-package com.example.geoorkael.ui.theme
+package com.example.geoorakel.theme
 
 import androidx.compose.ui.graphics.Color
 

@@ -22,5 +22,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "GeoOrkael"
+rootProject.name = "GeoOrakel"
 include(":app")

@@ -19,7 +19,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        org.maplibre.android.MapLibre.getInstance(this) // Karte initialisieren
+        org.maplibre.android.MapLibre.getInstance(applicationContext) // Karte initialisieren
         enableEdgeToEdge()
         setContent {
             GeoOrkaelTheme {

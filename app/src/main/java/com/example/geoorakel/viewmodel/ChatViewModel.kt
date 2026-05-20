@@ -22,6 +22,8 @@ class ChatViewModel : ViewModel() {
         apiKey = BuildConfig.GEMINI_API_KEY
     )
 
+    private val chat = generativeModel.startChat()
+
     // Liste, die den Chatverlauf speichert
     private val _messages = mutableStateListOf<ChatMessage>()
     val messages: List<ChatMessage> = _messages
@@ -32,7 +34,7 @@ class ChatViewModel : ViewModel() {
 
         viewModelScope.launch {
             try {
-                val response = generativeModel.generateContent(userText)
+                val response = chat.sendMessage(userText)
                 _messages.add(ChatMessage(text = response.text ?: "Keine Antwort.", isFromUser = false))
             } catch (e: Exception) {
                 // potenzielle Fehler abfangen

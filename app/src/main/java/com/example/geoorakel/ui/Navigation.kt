@@ -13,6 +13,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -20,6 +21,8 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import kotlinx.serialization.Serializable
 import com.example.geoorakel.viewmodel.LocationViewModel
+import com.example.geoorakel.viewmodel.ChatViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
 
 @Serializable object MapRoute
 @Serializable object ChatRoute
@@ -28,7 +31,10 @@ import com.example.geoorakel.viewmodel.LocationViewModel
 fun AppNavigation(locationViewModel: LocationViewModel) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
-    val currentDestination = navBackStackEntry?.destination // Karte als default Ziel
+    val currentDestination = navBackStackEntry?.destination
+
+    // HIER WAR DIE LÜCKE: Die Variable muss deklariert werden!
+    val chatViewModel: ChatViewModel = viewModel()
 
     Scaffold(
         bottomBar = {
@@ -53,10 +59,21 @@ fun AppNavigation(locationViewModel: LocationViewModel) {
             startDestination = MapRoute
         ) {
             composable<MapRoute> {
-                MapScreen(modifier = androidx.compose.ui.Modifier.padding(innerPadding), locationViewModel = locationViewModel)
+                MapScreen(
+                    modifier = Modifier.padding(innerPadding),
+                    locationViewModel = locationViewModel,
+                    onAskOracle = { prompt ->
+                        // Jetzt kennt die Funktion das chatViewModel!
+                        chatViewModel.sendMessage(prompt)
+                        navController.navigate(ChatRoute)
+                    }
+                )
             }
             composable<ChatRoute> {
-                ChatScreen(modifier = androidx.compose.ui.Modifier.padding(innerPadding))
+                ChatScreen(
+                    modifier = Modifier.padding(innerPadding),
+                    chatViewModel = chatViewModel
+                )
             }
         }
     }

@@ -34,12 +34,20 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.ui.graphics.Color
+import org.maplibre.android.camera.CameraUpdateFactory
+
 
 @SuppressLint("MissingPermission")
 @Composable
-fun MapScreen(modifier: Modifier = Modifier, locationViewModel: LocationViewModel) {
+fun MapScreen(
+    modifier: Modifier = Modifier,
+    locationViewModel: LocationViewModel,
+    onAskOracle: (String) -> Unit) {
 
     val location by locationViewModel.location.collectAsState() // Standort aus LocationViewModel.kt
+    val currentLocation by rememberUpdatedState(location)
+    val oraclePrompt by locationViewModel.oraclePrompt.collectAsState()
+
     val context = LocalContext.current
     val styleUrl = "https://api.maptiler.com/maps/outdoor/style.json?key=${BuildConfig.MAPTILER_API_KEY}"
 
@@ -98,6 +106,13 @@ fun MapScreen(modifier: Modifier = Modifier, locationViewModel: LocationViewMode
         }
     }
 
+    LaunchedEffect(oraclePrompt) {
+        oraclePrompt?.let {
+            onAskOracle(it)
+            locationViewModel.clearOraclePrompt()
+        }
+    }
+
     // Layout
     Box(modifier = modifier) {
         AndroidView(
@@ -106,18 +121,23 @@ fun MapScreen(modifier: Modifier = Modifier, locationViewModel: LocationViewMode
         )
         // Orakel fragen (später)
         Button(
-            onClick = {},
+            onClick = {
+                val loc = currentLocation
+                if (loc != null) {
+                    locationViewModel.buildOraclePrompt(loc.latitude, loc.longitude)
+                }
+            },
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(32.dp)
         ) {
-            Text("Button")
+            Text("Orakel fragen")
         }
 
         // Button um auf eigenen Standort zu zoomen
         Button(
             onClick = {
-                val loc = location
+                val loc = currentLocation
                 val map = mapRef
                 if (loc != null && map != null) {
                     zoomToCurrentLocation(map, loc.latitude, loc.longitude)
@@ -125,8 +145,7 @@ fun MapScreen(modifier: Modifier = Modifier, locationViewModel: LocationViewMode
             },
             shape = CircleShape,
             colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFF2196F3),
-                contentColor = Color.Black,
+                containerColor = Color(0xFF2196F3)
             ),
             contentPadding = PaddingValues(0.dp),
             modifier = Modifier
@@ -145,8 +164,14 @@ fun MapScreen(modifier: Modifier = Modifier, locationViewModel: LocationViewMode
 // auf Standort zoomen
 fun zoomToCurrentLocation(map: org.maplibre.android.maps.MapLibreMap, latitude: Double, longitude: Double) {
     android.util.Log.d("MapScreen", "Zoome auf: $latitude, $longitude")
-    map.cameraPosition = CameraPosition.Builder()
+    val cameraPosition = CameraPosition.Builder()
         .target(LatLng(latitude, longitude))
         .zoom(15.0)
+        .bearing(0.0)
         .build()
+
+    map.animateCamera(
+        CameraUpdateFactory.newCameraPosition(cameraPosition),
+        1000
+    )
 }

@@ -4,15 +4,23 @@ import android.annotation.SuppressLint
 import android.app.Application
 import android.location.Location
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.geoorakel.data.LocationRepository
 import com.google.android.gms.location.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 
 class LocationViewModel(application: Application) : AndroidViewModel(application) {
 
+    private val locationRepository = LocationRepository(application)
+
     private val _location = MutableStateFlow<Location?>(null)
     val location: StateFlow<Location?> = _location.asStateFlow()
+
+    private val _oraclePrompt = MutableStateFlow<String?>(null)
+    val oraclePrompt: StateFlow<String?> = _oraclePrompt.asStateFlow()
 
     private val fusedLocationClient =
         LocationServices.getFusedLocationProviderClient(application)
@@ -23,13 +31,12 @@ class LocationViewModel(application: Application) : AndroidViewModel(application
     fun startLocationUpdates() {
         val request = LocationRequest.Builder(
             Priority.PRIORITY_HIGH_ACCURACY,
-            5000L // alle 5 Sekunden
+            5000L
         ).build()
 
         locationCallback = object : LocationCallback() {
             override fun onLocationResult(result: LocationResult) {
                 result.lastLocation?.let {
-                    android.util.Log.d("LocationVM", "Standort aktualisiert: ${it.latitude}, ${it.longitude}")
                     _location.value = it
                 }
             }
@@ -40,6 +47,19 @@ class LocationViewModel(application: Application) : AndroidViewModel(application
             locationCallback!!,
             android.os.Looper.getMainLooper()
         )
+    }
+
+    fun buildOraclePrompt(lat: Double, lon: Double) {
+        viewModelScope.launch {
+            val placeName = locationRepository.getAddressName(lat, lon)
+            _oraclePrompt.value =
+                "Ich befinde mich hier: $placeName (Koordinaten: $lat, $lon). " +
+                        "Du bist das GeoOrakel. Erzähle mir, welche interessanten Orte es hier gibt und was man unternehmen kann."
+        }
+    }
+
+    fun clearOraclePrompt() {
+        _oraclePrompt.value = null
     }
 
     fun stopLocationUpdates() {

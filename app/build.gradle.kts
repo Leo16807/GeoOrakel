@@ -24,6 +24,7 @@ android {
         }
 
         buildConfigField("String", "MAPTILER_API_KEY", "\"${properties.getProperty("MAPTILER_API_KEY")}\"")
+        buildConfigField("String", "GEMINI_API_KEY", "\"${properties.getProperty("GEMINI_API_KEY")}\"")
     }
 
     buildTypes {
@@ -60,7 +61,8 @@ dependencies {
     implementation(libs.androidx.compose.material.icons)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.play.services.location)
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.11.0")
+    implementation(libs.kotlinx.coroutines.play.services)
+    implementation(libs.generativeai)
     implementation(libs.accompanist.permissions)
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))

@@ -32,10 +32,27 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.ui.graphics.Color
 import org.maplibre.android.camera.CameraUpdateFactory
+import androidx.compose.runtime.mutableIntStateOf
 
+// Verfügbare MapTiler-Styles: Name -> Style-Bezeichner (wie im MapTiler-Style-URL)
+private data class MapStyleOption(val label: String, val styleId: String)
+
+private val mapStyles = listOf(
+    MapStyleOption("Basic", "basic-v2"),
+    MapStyleOption("Outdoor", "outdoor"),
+    MapStyleOption("Streets", "streets-v2"),
+    MapStyleOption("Satellite", "hybrid")
+
+)
+
+private fun styleUrlFor(styleId: String): String =
+    "https://api.maptiler.com/maps/$styleId/style.json?key=${BuildConfig.MAPTILER_API_KEY}"
 
 @SuppressLint("MissingPermission")
 @Composable
@@ -49,30 +66,57 @@ fun MapScreen(
     val oraclePrompt by locationViewModel.oraclePrompt.collectAsState()
 
     val context = LocalContext.current
-    val styleUrl = "https://api.maptiler.com/maps/outdoor/style.json?key=${BuildConfig.MAPTILER_API_KEY}"
+
+    // Index des aktuell gewählten Kartenstils
+    var currentStyleIndex by remember { mutableIntStateOf(0) }
+    val currentStyleUrl = remember(currentStyleIndex) {
+        styleUrlFor(mapStyles[currentStyleIndex].styleId)
+    }
+
+    // Steuert Sichtbarkeit des Dropdown-Menüs
+    var styleMenuExpanded by remember { mutableStateOf(false) }
 
     var mapRef by remember { mutableStateOf<org.maplibre.android.maps.MapLibreMap?>(null) }
     val hasCentered = remember { mutableStateOf(false) }
 
-    // Kartenobjekt
+    // Hilfsfunktion: Style setzen + Location-Component danach neu aktivieren
+    fun applyStyle(map: org.maplibre.android.maps.MapLibreMap, url: String) {
+        map.setStyle(url) { style ->
+            val locationComponent = map.locationComponent
+            locationComponent.activateLocationComponent(
+                LocationComponentActivationOptions
+                    .builder(context, style)
+                    .build()
+            )
+            locationComponent.isLocationComponentEnabled = true
+            locationComponent.cameraMode = CameraMode.NONE
+            locationComponent.renderMode = RenderMode.NORMAL
+        }
+    }
+
+    // Kartenobjekt (wird nur einmal erzeugt)
     val mapView = remember {
         MapView(context).apply {
             onCreate(null)
             getMapAsync { map ->
                 mapRef = map
-                map.setStyle(styleUrl) { style ->
-                    val locationComponent = map.locationComponent
-                    locationComponent.activateLocationComponent(
-                        LocationComponentActivationOptions
-                            .builder(context, style)
-                            .build()
-                    )
-                    locationComponent.isLocationComponentEnabled = true
-                    locationComponent.cameraMode = CameraMode.NONE
-                    locationComponent.renderMode = RenderMode.NORMAL
-                }
+                applyStyle(map, currentStyleUrl)
                 map.setMinZoomPreference(4.0)
                 map.setMaxZoomPreference(18.0)
+            }
+        }
+    }
+
+    // Bei Style-Wechsel: Style neu laden (aber nicht beim allerersten Rendern,
+    // das übernimmt schon getMapAsync oben)
+    val isFirstStyleApply = remember { mutableStateOf(true) }
+    LaunchedEffect(currentStyleUrl, mapRef) {
+        val map = mapRef
+        if (map != null) {
+            if (isFirstStyleApply.value) {
+                isFirstStyleApply.value = false
+            } else {
+                applyStyle(map, currentStyleUrl)
             }
         }
     }
@@ -154,9 +198,46 @@ fun MapScreen(
                 .size(56.dp)
         ) {
             Icon(
-            imageVector = Icons.Default.MyLocation,
-            contentDescription = "Auf Standort zoomen"
-        )
+                imageVector = Icons.Default.MyLocation,
+                contentDescription = "Auf Standort zoomen"
+            )
+        }
+
+        // Button + Dropdown-Menü zum Wählen des Kartenstils
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(16.dp)
+        ) {
+            Button(
+                onClick = { styleMenuExpanded = true },
+                shape = CircleShape,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF424242)
+                ),
+                contentPadding = PaddingValues(0.dp),
+                modifier = Modifier.size(56.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Layers,
+                    contentDescription = "Kartenstil wählen"
+                )
+            }
+
+            DropdownMenu(
+                expanded = styleMenuExpanded,
+                onDismissRequest = { styleMenuExpanded = false }
+            ) {
+                mapStyles.forEachIndexed { index, option ->
+                    DropdownMenuItem(
+                        text = { Text(option.label) },
+                        onClick = {
+                            currentStyleIndex = index
+                            styleMenuExpanded = false
+                        }
+                    )
+                }
+            }
         }
     }
 }

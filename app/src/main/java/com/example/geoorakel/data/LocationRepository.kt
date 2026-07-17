@@ -4,7 +4,13 @@ import android.content.Context
 import android.location.Address
 import android.location.Geocoder
 import android.os.Build
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
+import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
+import java.net.URLEncoder
 import java.util.Locale
 import kotlin.coroutines.resume
 
@@ -45,4 +51,105 @@ class LocationRepository(private val context: Context) {
                 continuation.resume(name)
             }
         }
+
+    /**
+     * Sucht über die Wikipedia GeoSearch-API nach Artikeln in der Nähe der übergebenen
+     * Koordinaten und liefert einen zusammengefassten Text mit Titel + Kurzbeschreibung
+     * zurück. Gibt einen leeren String zurück, falls nichts gefunden wird oder ein
+     * Netzwerkfehler auftritt (das Orakel funktioniert dann weiterhin, nur ohne diesen
+     * zusätzlichen Kontext).
+     */
+    suspend fun getNearbyWikiContext(
+        lat: Double,
+        lon: Double,
+        radiusMeters: Int = 8000,
+        limit: Int = 5
+    ): String = withContext(Dispatchers.IO) {
+        try {
+            val language = wikipediaLanguage()
+            val pageIds = fetchNearbyPageIds(language, lat, lon, radiusMeters, limit)
+            if (pageIds.isEmpty()) return@withContext ""
+
+            val extracts = fetchExtracts(language, pageIds)
+            extracts.entries.joinToString(separator = "\n\n") { (title, extract) ->
+                "„$title“: $extract"
+            }
+        } catch (e: Exception) {
+            android.util.Log.w("LocationRepository", "Wikipedia-Anfrage fehlgeschlagen", e)
+            ""
+        }
+    }
+
+    // Wählt die Wikipedia-Sprachversion passend zur Gerätesprache, mit Fallback auf Englisch
+    private fun wikipediaLanguage(): String {
+        val lang = Locale.getDefault().language
+        return lang.ifBlank { "en" }
+    }
+
+    // Erster Call: GeoSearch liefert Page-IDs + Titel nahegelegener Artikel
+    private fun fetchNearbyPageIds(
+        language: String,
+        lat: Double,
+        lon: Double,
+        radiusMeters: Int,
+        limit: Int
+    ): List<Int> {
+        val coord = "$lat|$lon"
+        val urlString = "https://$language.wikipedia.org/w/api.php" +
+                "?action=query&list=geosearch" +
+                "&gscoord=${URLEncoder.encode(coord, "UTF-8")}" +
+                "&gsradius=$radiusMeters" +
+                "&gslimit=$limit" +
+                "&format=json"
+
+        val json = httpGetJson(urlString)
+        val results = json.optJSONObject("query")?.optJSONArray("geosearch") ?: return emptyList()
+
+        val ids = mutableListOf<Int>()
+        for (i in 0 until results.length()) {
+            ids.add(results.getJSONObject(i).getInt("pageid"))
+        }
+        return ids
+    }
+
+    // Zweiter Call: liefert kurze Klartext-Zusammenfassungen (Intro) zu den gefundenen Artikeln
+    private fun fetchExtracts(language: String, pageIds: List<Int>): Map<String, String> {
+        val idsParam = pageIds.joinToString("|")
+        val urlString = "https://$language.wikipedia.org/w/api.php" +
+                "?action=query&prop=extracts" +
+                "&exintro&explaintext" +
+                "&exsentences=2" +
+                "&pageids=$idsParam" +
+                "&format=json"
+
+        val json = httpGetJson(urlString)
+        val pages = json.optJSONObject("query")?.optJSONObject("pages") ?: return emptyMap()
+
+        val result = LinkedHashMap<String, String>()
+        val keys = pages.keys()
+        while (keys.hasNext()) {
+            val page = pages.getJSONObject(keys.next())
+            val title = page.optString("title")
+            val extract = page.optString("extract")
+            if (title.isNotBlank() && extract.isNotBlank()) {
+                result[title] = extract
+            }
+        }
+        return result
+    }
+
+    private fun httpGetJson(urlString: String): JSONObject {
+        val url = URL(urlString)
+        val connection = url.openConnection() as HttpURLConnection
+        connection.requestMethod = "GET"
+        connection.setRequestProperty("User-Agent", "GeoOrakel-App/1.0")
+        connection.connectTimeout = 8000
+        connection.readTimeout = 8000
+
+        connection.inputStream.bufferedReader().use { reader ->
+            val text = reader.readText()
+            connection.disconnect()
+            return JSONObject(text)
+        }
+    }
 }

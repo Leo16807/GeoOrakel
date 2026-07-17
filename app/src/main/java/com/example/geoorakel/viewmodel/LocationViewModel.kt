@@ -52,9 +52,18 @@ class LocationViewModel(application: Application) : AndroidViewModel(application
     fun buildOraclePrompt(lat: Double, lon: Double) {
         viewModelScope.launch {
             val placeName = locationRepository.getAddressName(lat, lon)
+            val wikiContext = locationRepository.getNearbyWikiContext(lat, lon)
+
+            val contextBlock = if (wikiContext.isNotBlank()) {
+                "\n\nHier sind bekannte Orte/Themen aus der näheren Umgebung laut Wikipedia:\n\n$wikiContext"
+            } else {
+                ""
+            }
+
             _oraclePrompt.value =
-                "Ich befinde mich hier: $placeName (Koordinaten: $lat, $lon). " +
-                        "Du bist das GeoOrakel. Erzähle mir, welche interessanten Orte es hier gibt und was man unternehmen kann."
+                "Ich befinde mich hier: $placeName (Koordinaten: $lat, $lon)." +
+                        contextBlock +
+                        "\n\nDu bist das GeoOrakel. Erzähle mir, welche interessanten Orte es hier gibt."
         }
     }
 

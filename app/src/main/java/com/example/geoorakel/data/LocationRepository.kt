@@ -52,13 +52,6 @@ class LocationRepository(private val context: Context) {
             }
         }
 
-    /**
-     * Sucht über die Wikipedia GeoSearch-API nach Artikeln in der Nähe der übergebenen
-     * Koordinaten und liefert einen zusammengefassten Text mit Titel + Kurzbeschreibung
-     * zurück. Gibt einen leeren String zurück, falls nichts gefunden wird oder ein
-     * Netzwerkfehler auftritt (das Orakel funktioniert dann weiterhin, nur ohne diesen
-     * zusätzlichen Kontext).
-     */
     suspend fun getNearbyWikiContext(
         lat: Double,
         lon: Double,
@@ -80,13 +73,11 @@ class LocationRepository(private val context: Context) {
         }
     }
 
-    // Wählt die Wikipedia-Sprachversion passend zur Gerätesprache, mit Fallback auf Englisch
     private fun wikipediaLanguage(): String {
         val lang = Locale.getDefault().language
         return lang.ifBlank { "en" }
     }
 
-    // Erster Call: GeoSearch liefert Page-IDs + Titel nahegelegener Artikel
     private fun fetchNearbyPageIds(
         language: String,
         lat: Double,
@@ -112,7 +103,6 @@ class LocationRepository(private val context: Context) {
         return ids
     }
 
-    // Zweiter Call: liefert kurze Klartext-Zusammenfassungen (Intro) zu den gefundenen Artikeln
     private fun fetchExtracts(language: String, pageIds: List<Int>): Map<String, String> {
         val idsParam = pageIds.joinToString("|")
         val urlString = "https://$language.wikipedia.org/w/api.php" +

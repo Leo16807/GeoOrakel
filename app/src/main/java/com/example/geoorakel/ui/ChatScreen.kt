@@ -19,18 +19,16 @@ import com.example.geoorakel.viewmodel.ChatViewModel
 @Composable
 fun ChatScreen(
     modifier: Modifier = Modifier,
-    chatViewModel: ChatViewModel = viewModel() // ViewModel wird automatisch instanziiert
+    chatViewModel: ChatViewModel = viewModel()
 ) {
     var inputText by remember { mutableStateOf("") }
     val messages = chatViewModel.messages
 
     Column(modifier = modifier.fillMaxSize().padding(16.dp)) {
-        // Chat-Verlauf
         LazyColumn(
             modifier = Modifier.weight(1f),
-            reverseLayout = true // Zeigt die neuesten Nachrichten unten an
+            reverseLayout = true
         ) {
-            // Wir drehen die Liste um, wegen reverseLayout = true
             items(messages.reversed()) { message ->
                 MessageBubble(message = message)
                 Spacer(modifier = Modifier.height(8.dp))
@@ -38,8 +36,6 @@ fun ChatScreen(
         }
 
         Spacer(modifier = Modifier.height(8.dp))
-
-        // Eingabefeld am unteren Rand
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
@@ -55,7 +51,7 @@ fun ChatScreen(
             IconButton(
                 onClick = {
                     chatViewModel.sendMessage(inputText)
-                    inputText = "" // Feld nach dem Senden leeren
+                    inputText = ""
                 },
                 modifier = Modifier.padding(start = 8.dp)
             ) {
@@ -65,7 +61,6 @@ fun ChatScreen(
     }
 }
 
-// Hilfs-Composable für die Chat-Blasen
 @Composable
 fun MessageBubble(message: ChatMessage) {
     val backgroundColor = if (message.isFromUser) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.secondaryContainer

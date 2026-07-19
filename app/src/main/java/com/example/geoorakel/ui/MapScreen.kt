@@ -40,14 +40,13 @@ import androidx.compose.ui.graphics.Color
 import org.maplibre.android.camera.CameraUpdateFactory
 import androidx.compose.runtime.mutableIntStateOf
 
-// Verfügbare MapTiler-Styles: Name -> Style-Bezeichner (wie im MapTiler-Style-URL)
 private data class MapStyleOption(val label: String, val styleId: String)
 
 private val mapStyles = listOf(
-    MapStyleOption("Basic", "basic-v2"),
+    MapStyleOption("Klassisch", "basic-v2"),
     MapStyleOption("Outdoor", "outdoor"),
-    MapStyleOption("Streets", "streets-v2"),
-    MapStyleOption("Satellite", "hybrid")
+    MapStyleOption("Straßen", "streets-v2"),
+    MapStyleOption("Satellit", "hybrid")
 
 )
 
@@ -79,7 +78,7 @@ fun MapScreen(
     var mapRef by remember { mutableStateOf<org.maplibre.android.maps.MapLibreMap?>(null) }
     val hasCentered = remember { mutableStateOf(false) }
 
-    // Hilfsfunktion: Style setzen + Location-Component danach neu aktivieren
+    // Style setzen + Location-Component danach neu aktivieren
     fun applyStyle(map: org.maplibre.android.maps.MapLibreMap, url: String) {
         map.setStyle(url) { style ->
             val locationComponent = map.locationComponent
@@ -94,7 +93,7 @@ fun MapScreen(
         }
     }
 
-    // Kartenobjekt (wird nur einmal erzeugt)
+    // Kartenobjekt
     val mapView = remember {
         MapView(context).apply {
             onCreate(null)
@@ -107,8 +106,6 @@ fun MapScreen(
         }
     }
 
-    // Bei Style-Wechsel: Style neu laden (aber nicht beim allerersten Rendern,
-    // das übernimmt schon getMapAsync oben)
     val isFirstStyleApply = remember { mutableStateOf(true) }
     LaunchedEffect(currentStyleUrl, mapRef) {
         val map = mapRef
@@ -206,7 +203,7 @@ fun MapScreen(
         // Button + Dropdown-Menü zum Wählen des Kartenstils
         Box(
             modifier = Modifier
-                .align(Alignment.TopEnd)
+                .align(Alignment.TopStart)
                 .padding(16.dp)
         ) {
             Button(

@@ -24,7 +24,6 @@ class ChatViewModel : ViewModel() {
 
     private val chat = generativeModel.startChat()
 
-    // Liste, die den Chatverlauf speichert
     private val _messages = mutableStateListOf<ChatMessage>()
     val messages: List<ChatMessage> = _messages
 
